@@ -8,14 +8,20 @@
 </head>
 <body>
   <h1>Flight Data Narrative Visualization</h1>
+
   <div id="vis"></div>
-  <div id="controls">
-    <button id="nextBtn">Learn More</button>
-    <div id="dropdownContainer" style="display:none;">
+
+  <div id="annotation" style="margin-top: 10px; font-style: italic;"></div>
+
+  <div id="controls" style="margin-top: 20px;">
+    <button id="nextBtn">Next Scene</button>
+
+    <div id="dropdownContainer" style="display:none; margin-top: 10px;">
       <label for="airlineDropdown">Select Airline:</label>
       <select id="airlineDropdown"></select>
     </div>
   </div>
+
   <script src="js/script.js" defer></script>
 </body>
 </html>

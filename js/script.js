@@ -1,220 +1,217 @@
 let currentScene = 0;
+let flightData;
+let selectedClass = "Economy"; // You can add UI later to change this if you want
+let selectedAirline = "All";
 
-d3.csv("data/flights.csv").then(data => {
-  data.forEach(d => {
-    d.price = +d.price;
-    d.days_left = +d.days_left;
-  });
+const figure = d3.select("#vis");
+const annotationDiv = d3.select("#annotation");
+const dropdownContainer = d3.select("#dropdownContainer");
+const airlineDropdown = d3.select("#airlineDropdown");
 
-  showScene0(data);
+// Load CSV data
+d3.csv("data/flights.csv", d3.autoType).then(data => {
+  flightData = data;
 
-d3.select("#nextBtn").on("click", () => {
-    currentScene++;
-    if (currentScene === 1) showScene1(data);
-    else if (currentScene === 2) showScene2(data);
-  });
-});
-
-function showScene0(data) {
-  d3.select("#vis").html("");
-  d3.select("#dropdownContainer").style("display", "none");
-
-  const svg = d3.select("#vis").append("svg")
-    .attr("width", 800).attr("height", 500);
-
-  const airlines = [...new Set(data.map(d => d.airline))];
-  const avgPrice = d3.rollups(data, v => d3.mean(v, d => d.price), d => d.airline);
-  avgPrice.sort((a, b) => b[1] - a[1]);
-
-  const x = d3.scaleBand()
-    .domain(avgPrice.map(d => d[0]))
-    .range([80, 750]).padding(0.2);
-
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(avgPrice, d => d[1])])
-    .range([450, 50]);
-
-  svg.append("g").attr("transform", "translate(0,450)").call(d3.axisBottom(x));
-  svg.append("g").attr("transform", "translate(80,0)").call(d3.axisLeft(y));
-
-  svg.selectAll("rect")
-    .data(avgPrice)
-    .enter().append("rect")
-    .attr("x", d => x(d[0]))
-    .attr("y", d => y(d[1]))
-    .attr("width", x.bandwidth())
-    .attr("height", d => 450 - y(d[1]))
-    .attr("fill", "steelblue");
-
-  svg.append("text")
-    .attr("x", 400).attr("y", 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "18px")
-    .text("Average Price by Airline");
-
-  // ... existing svg, x, y code ...
-
-    svg.append("text")
-    .attr("x", 400)
-    .attr("y", 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "18px")
-    .text("Average Price by Airline");
-
-    // X Axis Label
-    svg.append("text")
-    .attr("x", 400)
-    .attr("y", 490)
-    .attr("text-anchor", "middle")
-    .text("Airline");
-
-    // Y Axis Label
-    svg.append("text")
-    .attr("text-anchor", "middle")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -250)
-    .attr("y", 20)
-    .text("Average Price");
-
-}
-
-function showScene1(data) {
-  d3.select("#vis").html("");
-  d3.select("#dropdownContainer").style("display", "none");
-
-  const svg = d3.select("#vis").append("svg")
-    .attr("width", 800).attr("height", 500);
-
-  const x = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.days_left)])
-    .range([80, 750]);
-
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.price)])
-    .range([450, 50]);
-
-  svg.append("g").attr("transform", "translate(0,450)").call(d3.axisBottom(x));
-  svg.append("g").attr("transform", "translate(80,0)").call(d3.axisLeft(y));
-
-  svg.selectAll("circle")
-    .data(data)
-    .enter().append("circle")
-    .attr("cx", d => x(d.days_left))
-    .attr("cy", d => y(d.price))
-    .attr("r", 3)
-    .attr("fill", "darkred")
-    .attr("opacity", 0.6);
-
-  svg.append("text")
-    .attr("x", 400).attr("y", 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "18px")
-    .text("Price vs. Days Left Until Flight");
-
-    // ... existing svg, x, y code ...
-
-    svg.append("text")
-    .attr("x", 400)
-    .attr("y", 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "18px")
-    .text("Price vs. Days Left Until Flight");
-
-    // X Axis Label
-    svg.append("text")
-    .attr("x", 400)
-    .attr("y", 490)
-    .attr("text-anchor", "middle")
-    .text("Days Left Until Flight");
-
-    // Y Axis Label
-    svg.append("text")
-    .attr("text-anchor", "middle")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -250)
-    .attr("y", 20)
-    .text("Price");
-
-}
-
-function showScene2(data) {
-  d3.select("#vis").html("");
-  d3.select("#dropdownContainer").style("display", "inline");
-
-  const svg = d3.select("#vis").append("svg")
-    .attr("width", 800).attr("height", 500);
-
-  const airlines = [...new Set(data.map(d => d.airline))];
-  const dropdown = d3.select("#airlineDropdown")
-    .on("change", () => updateChart(dropdown.property("value")));
-
-  dropdown.selectAll("option")
-    .data(airlines)
+  // Populate airline dropdown
+  const airlines = Array.from(new Set(flightData.map(d => d.airline))).sort();
+  airlineDropdown.selectAll("option")
+    .data(["All", ...airlines])
     .join("option")
     .attr("value", d => d)
     .text(d => d);
 
-  function updateChart(selectedAirline) {
-    svg.selectAll("*").remove();
+  airlineDropdown.on("change", function () {
+    selectedAirline = this.value;
+    if (currentScene === 2) {
+        updateScene(currentScene);
+    }
+    });
 
-    const airlineData = data.filter(d => d.airline === selectedAirline);
+  updateScene(currentScene);
+});
 
-    const x = d3.scaleLinear()
-      .domain([0, d3.max(airlineData, d => d.price)])
-      .range([80, 750]);
+// Next scene button
+d3.select("#nextBtn").on("click", () => {
+  currentScene = (currentScene + 1) % 3;
+  updateScene(currentScene);
+});
 
+function updateScene(sceneIndex) {
+  figure.selectAll("svg").remove();
+  annotationDiv.text("");
+
+  const svg = figure.append("svg")
+    .attr("width", 800)
+    .attr("height", 500);
+
+  const margin = { top: 60, right: 40, bottom: 70, left: 90 };
+  const width = +svg.attr("width") - margin.left - margin.right;
+  const height = +svg.attr("height") - margin.top - margin.bottom;
+
+  const g = svg.append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Filter data by class and airline
+  let filteredData = flightData.filter(d => d.class === selectedClass);
+  if (selectedAirline !== "All") {
+    filteredData = filteredData.filter(d => d.airline === selectedAirline);
+  }
+
+  let xScale, yScale, xLabel, yLabel, annotation;
+
+  if (sceneIndex === 0) {
+    // Scene 0: Average Price by Airline (bar chart)
+    dropdownContainer.style("display", "none");
+
+    const avgPrice = d3.rollups(
+      filteredData,
+      v => d3.mean(v, d => d.price),
+      d => d.airline
+    );
+    avgPrice.sort((a, b) => b[1] - a[1]);
+
+    xScale = d3.scaleBand()
+      .domain(avgPrice.map(d => d[0]))
+      .range([0, width])
+      .padding(0.3);
+
+    yScale = d3.scaleLinear()
+      .domain([0, d3.max(avgPrice, d => d[1])])
+      .nice()
+      .range([height, 0]);
+
+    g.selectAll("rect")
+      .data(avgPrice)
+      .join("rect")
+      .attr("x", d => xScale(d[0]))
+      .attr("y", d => yScale(d[1]))
+      .attr("width", xScale.bandwidth())
+      .attr("height", d => height - yScale(d[1]))
+      .attr("fill", "steelblue");
+
+    // Axis
+    g.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(xScale))
+      .selectAll("text")
+      .attr("transform", "rotate(-40)")
+      .style("text-anchor", "end");
+
+    g.append("g")
+      .call(d3.axisLeft(yScale));
+
+    xLabel = "Airline";
+    yLabel = "Average Price (USD)";
+    annotation = "Average flight price by airline for Economy class.";
+
+  } else if (sceneIndex === 1) {
+    // Scene 1: Price vs. Days Left (scatterplot)
+    dropdownContainer.style("display", "none");
+
+    xScale = d3.scaleLinear()
+      .domain(d3.extent(filteredData, d => d.days_left))
+      .nice()
+      .range([0, width]);
+
+    yScale = d3.scaleLinear()
+      .domain(d3.extent(filteredData, d => d.price))
+      .nice()
+      .range([height, 0]);
+
+    g.selectAll("circle")
+      .data(filteredData)
+      .join("circle")
+      .attr("cx", d => xScale(d.days_left))
+      .attr("cy", d => yScale(d.price))
+      .attr("r", 4)
+      .attr("fill", "darkred")
+      .attr("opacity", 0.5);
+
+    // Axis
+    g.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(xScale));
+
+    g.append("g")
+      .call(d3.axisLeft(yScale));
+
+    xLabel = "Days Left Until Flight";
+    yLabel = "Price (USD)";
+    annotation = "Flight prices tend to rise as the departure date approaches.";
+
+  } else if (sceneIndex === 2) {
+    // Scene 2: Price Distribution for Selected Airline (histogram)
+    dropdownContainer.style("display", "block");
+
+    // Filtered by airline and class (already filtered)
+    let airlineData = filteredData;
+
+    const xMax = d3.max(airlineData, d => d.price) || 1000;
+
+    xScale = d3.scaleLinear()
+      .domain([0, xMax])
+      .nice()
+      .range([0, width]);
+
+    // Histogram
     const histogram = d3.histogram()
       .value(d => d.price)
-      .domain(x.domain())
-      .thresholds(x.ticks(20));
+      .domain(xScale.domain())
+      .thresholds(xScale.ticks(20));
 
     const bins = histogram(airlineData);
 
-    const y = d3.scaleLinear()
+    yScale = d3.scaleLinear()
       .domain([0, d3.max(bins, d => d.length)])
-      .range([450, 50]);
+      .nice()
+      .range([height, 0]);
 
-    svg.append("g").attr("transform", "translate(0,450)").call(d3.axisBottom(x));
-    svg.append("g").attr("transform", "translate(80,0)").call(d3.axisLeft(y));
+    g.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(xScale));
 
-    svg.selectAll("rect")
+    g.append("g")
+      .call(d3.axisLeft(yScale));
+
+    g.selectAll("rect")
       .data(bins)
       .join("rect")
-      .attr("x", d => x(d.x0))
-      .attr("y", d => y(d.length))
-      .attr("width", d => x(d.x1) - x(d.x0) - 1)
-      .attr("height", d => 450 - y(d.length))
-      .attr("fill", "seagreen");
+      .attr("x", d => xScale(d.x0) + 1)
+      .attr("y", d => yScale(d.length))
+      .attr("width", d => xScale(d.x1) - xScale(d.x0) - 1)
+      .attr("height", d => height - yScale(d.length))
+      .attr("fill", "seagreen")
+      .attr("opacity", 0.7);
 
-    svg.append("text")
-      .attr("x", 400).attr("y", 20)
-      .attr("text-anchor", "middle")
-      .style("font-size", "18px")
-      .text(`Price Distribution for ${selectedAirline}`);
-    
-    svg.append("text")
-    .attr("x", 400)
-    .attr("y", 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "18px")
-    .text(`Price Distribution for ${selectedAirline}`);
-
-    // X Axis Label
-    svg.append("text")
-    .attr("x", 400)
-    .attr("y", 490)
-    .attr("text-anchor", "middle")
-    .text("Price");
-
-    // Y Axis Label
-    svg.append("text")
-    .attr("text-anchor", "middle")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -250)
-    .attr("y", 20)
-    .text("Number of Flights");
-
+    xLabel = "Price (USD)";
+    yLabel = "Number of Flights";
+    annotation = selectedAirline === "All" ? 
+      "Price distribution for all airlines in Economy class." :
+      `Price distribution for ${selectedAirline} in Economy class.`;
   }
 
-  updateChart(dropdown.property("value"));
+  // Axis labels
+  g.append("text")
+    .attr("x", width / 2)
+    .attr("y", height + 50)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "14px")
+    .text(xLabel);
+
+  g.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -height / 2)
+    .attr("y", -60)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "14px")
+    .text(yLabel);
+
+  // Annotation text
+  annotationDiv.text(annotation);
+
+  if (sceneIndex === 2) {
+    d3.select("#nextBtn").style("display", "none");
+  } else {
+    d3.select("#nextBtn").style("display", "inline-block");
+  }
 }
