@@ -101,7 +101,7 @@ function updateScene(sceneIndex) {
       .call(d3.axisLeft(yScale));
 
     xLabel = "Airline";
-    yLabel = "Average Price (USD)";
+    yLabel = "Average Price";
     annotation = "Average flight price by airline for Economy class.";
 
   } else if (sceneIndex === 1) {
@@ -136,7 +136,7 @@ function updateScene(sceneIndex) {
       .call(d3.axisLeft(yScale));
 
     xLabel = "Days Left Until Flight";
-    yLabel = "Price (USD)";
+    yLabel = "Price";
     annotation = "Flight prices tend to rise as the departure date approaches.";
 
   } else if (sceneIndex === 2) {
@@ -183,7 +183,7 @@ function updateScene(sceneIndex) {
       .attr("fill", "seagreen")
       .attr("opacity", 0.7);
 
-    xLabel = "Price (USD)";
+    xLabel = "Price";
     yLabel = "Number of Flights";
     annotation = selectedAirline === "All" ? 
       "Price distribution for all airlines in Economy class." :
